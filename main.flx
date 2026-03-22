@@ -1,0 +1,19 @@
+struct Point {
+    x: int32,
+    y: int32
+}
+
+impl Point {
+    pub fnc new(x: int32, y: int32) -> Point {
+        let result: Point = Point {
+            x: x,
+            y: y,
+        };
+        return result;
+    }
+}
+
+fnc main() -> int32 {
+    let p = Point{}.new(1, 4);
+    return 0;
+}

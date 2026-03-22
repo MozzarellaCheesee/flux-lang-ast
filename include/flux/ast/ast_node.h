@@ -1,0 +1,25 @@
+#pragma once
+#include "flux/common/source_location.h"
+
+namespace flux {
+
+    struct ASTVisitor;
+
+    struct TypeNode {
+        SourceLocation loc;
+        virtual void accept(ASTVisitor& v) = 0;
+        virtual ~TypeNode() = default;
+    };
+
+    struct ASTNode {
+        SourceLocation loc;
+        virtual void accept(ASTVisitor& v) = 0;
+        virtual ~ASTNode() = default;
+    };
+
+    struct PatternNode { 
+        SourceLocation loc; 
+        virtual void accept(ASTVisitor& v) = 0;
+        virtual ~PatternNode() = default; 
+    };
+}

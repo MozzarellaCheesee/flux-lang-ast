@@ -1,0 +1,7 @@
+.vscode
+.clangd
+.cache
+/build
+/build-vsc
+.vs
+/out
