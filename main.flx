@@ -5,15 +5,23 @@ struct Point {
 
 impl Point {
     pub fnc new(x: int32, y: int32) -> Point {
-        let result: Point = Point {
+        return Point {
             x: x,
             y: y,
         };
-        return result;
+    }
+
+    pub fnc max(self, other: Point) -> Point {
+        if ((self.x + self.y) > (other.x + other.y)) {
+            return self;
+        } else {
+            return other;
+        }
     }
 }
-
 fnc main() -> int32 {
-    let p = Point{}.new(1, 4);
+    let p  = Point { x: 1, y: 4 };
+    let p2 = Point { x: 2, y: 6 };
+    let max_p = p.max(p2);
     return 0;
 }

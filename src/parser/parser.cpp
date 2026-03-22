@@ -95,20 +95,30 @@ namespace flux {
         if (check(TokenKind::KW_SELF)) {
             consume();
             has_self = true;
-            match(TokenKind::COMMA); // запятая после self необязательна если нет других параметров
+            // ← self без типа — создаём ParamDecl
+            auto self_param = std::make_unique<ParamDecl>("self", nullptr);
+            self_param->loc = previous().loc;
+            params.push_back(std::move(self_param));
+            match(TokenKind::COMMA);
         }
 
         // остальные параметры: name: Type, name: Type, ...
-        while (!check(TokenKind::RPAREN) && !check(TokenKind::END_OF_FILE)) {
-            auto ploc  = current().loc;
+        while (!check(TokenKind::RPAREN)) {
+            auto ploc = current().loc;
             auto pname = std::string(expect(TokenKind::IDENT, "parameter name").lexeme);
-            expect(TokenKind::COLON, ":");
-            auto ptype = parse_type();
-
+            
+            std::unique_ptr<TypeNode> ptype;
+            if (match(TokenKind::COLON)) {
+                ptype = parse_type();
+            } else {
+                diag_.emit(DiagLevel::Error, ploc, "Expected ':' after '" + pname + "'");
+                ptype = nullptr;
+            }
+            
             auto param = std::make_unique<ParamDecl>(pname, std::move(ptype));
             param->loc = ploc;
             params.push_back(std::move(param));
-
+            
             if (!match(TokenKind::COMMA)) break;
         }
         expect(TokenKind::RPAREN, ")");

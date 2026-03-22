@@ -1,5 +1,6 @@
 #include "flux/sema/sema.h"
 
+#include <string>
 #include <unordered_set>
 
 namespace flux {
@@ -69,8 +70,20 @@ namespace flux {
         sig.is_pub      = decl.is_pub;
         sig.owner       = owner;
 
-        for (auto& param : decl.params)
-            sig.param_types.push_back(type_node_to_string(param->type.get()));
+        // for (auto& param : decl.params)
+        //     sig.param_types.push_back(type_node_to_string(param->type.get()));
+
+        for (auto& param : decl.params) {
+            std::string ptype;
+            if (param->name == "self" && !param->type) {
+                ptype = owner;  // self = Point!
+            } else if (param->type) {
+                ptype = type_node_to_string(param->type.get());
+            } else {
+                ptype = "unknown";
+            }
+            sig.param_types.push_back(ptype);
+        }
 
         func_table_[decl.name].push_back(std::move(sig));
     }
@@ -216,11 +229,14 @@ namespace flux {
 
         push_scope();
 
-        // Добавляем параметры в область видимости
         for (auto& param : node.params) {
-            declare_var(param->name,
-                        type_node_to_string(param->type.get()),
-                        param->loc);
+            std::string param_type;
+            if (param->name == "self" && !param->type) {
+                param_type = current_impl_type_;  // Point.max → self: Point
+            } else {
+                param_type = type_node_to_string(param->type.get());
+            }
+            declare_var(param->name, param_type, param->loc);
         }
 
         if (node.body) node.body->accept(*this);
@@ -393,10 +409,11 @@ namespace flux {
         if (!current_func_) return;
 
         std::string expected = type_node_to_string(current_func_->return_type.get());
-        std::string actual   = node.value ? eval_type(*node.value) : "()";
+        std::string actual = node.value ? eval_type(*node.value) : "()";
 
         if (!is_assign_compatible(actual, expected)) {
-            diag_.emit(DiagLevel::Error, node.loc, "Return type mismatch: expected '" + expected + "', got '" + actual + "'");
+            diag_.emit(DiagLevel::Error, node.loc, 
+                "Return type mismatch: expected '" + expected + "', got '" + actual + "'");
         }
         last_type_ = actual;
     }
@@ -440,25 +457,30 @@ namespace flux {
 
     // ── Expressions ──────────────────────────────────────────
     void SemanticAnalyzer::visit(IdentExpr& node) {
+        // SPECIAL: self знает тип из контекста метода
+        if (node.name == "self" && current_func_ && !current_impl_type_.empty()) {
+            last_type_ = current_impl_type_;
+            return;
+        }
+
+        // SPECIAL: other тоже может быть параметром
+        std::string t = lookup_var(node.name);
+        if (!t.empty()) {
+            last_type_ = t;
+            return;
+        }
+
+        // builtin функции
         if (is_builtin(node.name)) {
             last_type_ = "builtin";
             return;
         }
-        static const std::unordered_set<std::string> constructors = {
-            "Ok", "Err", "Some", "None"
-        };
-        if (constructors.count(node.name)) { last_type_ = "builtin"; return; }
 
-        std::string t = lookup_var(node.name);
-        if (t.empty()) {
-            if (!func_table_.count(node.name))
-                diag_.emit(DiagLevel::Error, node.loc,
-                    "Undefined variable '" + node.name + "'");
-            last_type_ = "unknown";
-            return;
-        }
-        last_type_ = t;
+        // ошибка
+        diag_.emit(DiagLevel::Error, node.loc, "Undefined '" + node.name + "'");
+        last_type_ = "unknown";
     }
+
 
     void SemanticAnalyzer::visit(BinaryExpr& node) {
         std::string lhs_type = eval_type(*node.lhs);
@@ -601,13 +623,57 @@ namespace flux {
         for (auto& arg : node.args) {
             arg_types.push_back(eval_type(*arg));
         }
+        std::string debug = "CallExpr: '" + node.callee + "'";
+        for (const auto& arg : node.args) {
+            debug += " [" + (arg ? eval_type(*arg) : "null") + "]";
+        }
+        size_t dot_pos = node.callee.find('.');
+        if (dot_pos != std::string::npos) {
+            std::string type_name = node.callee.substr(0, dot_pos);
+            std::string method_name = node.callee.substr(dot_pos + 1);
+
+            // Ищем метод с owner == type_name
+            auto it = func_table_.find(method_name);
+            if (it != func_table_.end()) {
+                for (const auto& sig : it->second) {
+                    if (sig.owner == type_name) {
+                        // Проверяем видимость
+                        if (!sig.is_pub) {
+                            diag_.emit(DiagLevel::Error, node.loc,
+                                "Static method '" + method_name + "' of '" + type_name + "' is private");
+                        }
+
+                        // Проверяем аргументы
+                        if (sig.param_types.size() == arg_types.size()) {
+                            bool match = true;
+
+                            for (size_t i = 0; i < arg_types.size(); ++i) {
+                                if (!is_assign_compatible(arg_types[i], sig.param_types[i])) {
+                                    match = false;
+                                    break;
+                                }
+                            }
+                            if (match) {
+                                last_type_ = sig.return_type;
+                                return;  // ✅ НАШЛИ Point.new()!
+
+                            }
+                        }
+                    }
+                }
+            }
+
+            diag_.emit(DiagLevel::Error, node.loc,
+                "No matching static method '" + method_name + "' for type '" + type_name + "'");
+            last_type_ = "unknown";
+            return;
+        }
 
         if (is_builtin(node.callee)) {
             last_type_ = "()"; // println → unit
             return;
         }
 
-        size_t dot_pos = node.callee.find('.');
         if (dot_pos != std::string::npos) {
             std::string type_name = node.callee.substr(0, dot_pos);
             std::string method_name = node.callee.substr(dot_pos + 1);
@@ -675,25 +741,40 @@ namespace flux {
 
     void SemanticAnalyzer::visit(MethodCallExpr& node) {
         std::string receiver_type;
-        if (node.receiver)
-            receiver_type = eval_type(*node.receiver);
-        for (auto& arg : node.args)
-            if (arg) arg->accept(*this);
+        std::vector<std::string> arg_types;
+
+        if (node.receiver) receiver_type = eval_type(*node.receiver);
+        for (auto& arg : node.args) if (arg) arg_types.push_back(eval_type(*arg));
 
         auto it = func_table_.find(node.method);
         if (it != func_table_.end()) {
             for (const auto& sig : it->second) {
                 if (sig.owner == receiver_type) {
-                    // Метод найден — проверяем видимость
-                    if (!sig.is_pub && current_impl_type_ != receiver_type) {
-                        diag_.emit(DiagLevel::Error, node.loc,
-                            "Method '" + node.method + "' is private to '" +
-                            receiver_type + "' and cannot be called from outside");
+                    // full_args = [receiver] + args
+                    std::vector<std::string> full_args{receiver_type};
+                    full_args.insert(full_args.end(), arg_types.begin(), arg_types.end());
+                    // Совпадение сигнатуры
+                    if (sig.param_types.size() == full_args.size()) {
+                        bool match = true;
+                        for (size_t i = 0; i < full_args.size(); ++i) {
+                            bool compat = is_assign_compatible(full_args[i], sig.param_types[i]);
+                            if (!is_assign_compatible(full_args[i], sig.param_types[i])) {
+                                match = false;
+                                break;
+                            }
+                        }
+                        if (match) {
+                            last_type_ = sig.return_type;
+                            return;  // ✅ Point!
+                        }
+                        
                     }
-                    break;
                 }
             }
         }
+
+        diag_.emit(DiagLevel::Error, node.loc, "No method '" + node.method + "' for '" + receiver_type + "'");
+        last_type_ = "unknown";
 
         if (node.method == "to_string") { last_type_ = "string";  return; }
         if (node.method == "len")       { last_type_ = "usize_t"; return; }
@@ -846,7 +927,16 @@ namespace flux {
         diag_.emit(DiagLevel::Error, node.loc,
             "No field '" + node.field + "' in type '" + obj_type + "'");
         last_type_ = "unknown";
+    }
+
+    void SemanticAnalyzer::visit(SelfExpr& node) {
+        if (current_impl_type_.empty()) {
+            diag_.emit(DiagLevel::Error, node.loc, "'self' outside impl");
+            last_type_ = "unknown";
+        } else {
+            last_type_ = current_impl_type_;
         }
+    }
 
     bool SemanticAnalyzer::is_known_type(const std::string& name) const {
         // Примитивные типы
@@ -888,6 +978,7 @@ namespace flux {
     std::string SemanticAnalyzer::eval_type(ASTNode& node) {
         last_type_ = "unknown";
         node.accept(*this);
+        std::string result = last_type_;
         return last_type_;
     }
 

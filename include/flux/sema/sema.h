@@ -91,7 +91,7 @@ namespace flux {
         void visit(MatchArm&)         override;
         void visit(StructInitExpr&)   override;
         void visit(FieldAccessExpr&)  override;
-        void visit(SelfExpr&)         override {}
+        void visit(SelfExpr&)         override;
 
         void visit(WildcardPattern&)    override {}
         void visit(LiteralPattern&)     override {}
@@ -120,7 +120,6 @@ namespace flux {
         static bool        is_implicitly_convertible(const std::string& from, const std::string& to);
         // bool               is_result_compatible(const std::string& from, const std::string& to) const;
         static bool        is_assign_compatible(const std::string& from, const std::string& to);
-
 
 
         std::string last_type_; // тип последнего вычисленного выражения

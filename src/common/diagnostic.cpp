@@ -18,7 +18,7 @@ namespace flux {
                                 : (d.level == DiagLevel::Warning) ? "warning"
                                                                     : "note";
                 fprintf(stderr, "%s:%u:%u: %s: %s\n",
-                    d.loc.filepath, d.loc.line, d.loc.col,
+                    d.loc.filepath.c_str(), d.loc.line, d.loc.col,
                     prefix, d.message.c_str());
             }
         }
