@@ -1,6 +1,6 @@
 struct Point {
-    x: int32,
-    y: int32
+    pub x: int32,
+    pub y: int32
 }
 
 impl Point {
@@ -35,15 +35,17 @@ class People {
         };
     }
 
-    pub fnc printname(self) -> () {
+    pub fnc print_name(self) -> () {
         println(self.name);
     }
 }
 
-
 fnc main() -> int32 {
     let animal = People.new("John", 16);
-    println("hello");
-    animal.printname();
+    let x: int16 = 1345;
+    println(x);
+
+    let pt = Point.new(3, 6);
+    println(pt.x);
     return 0;
 }

@@ -629,7 +629,7 @@ namespace flux {
             if (it != func_table_.end()) {
                 for (const auto& sig : it->second) {
                     if (sig.owner == type_name) {
-                        if (!sig.is_pub) {
+                        if (!sig.is_pub && current_impl_type_ != type_name) {
                             diag_.emit(DiagLevel::Error, node.loc,
                                 "Static method '" + method_name + "' of '" + type_name + "' is private");
                         }
@@ -908,6 +908,11 @@ namespace flux {
                 continue;
             }
 
+            if (!fi->is_pub && current_impl_type_ != node.type_name) {
+                diag_.emit(DiagLevel::Error, node.loc,
+                    "Field '" + finit.name + "' of '" + node.type_name + "' is private");
+            }
+
             if (!is_assign_compatible(val_type, fi->type)) {
                 diag_.emit(DiagLevel::Error, node.loc,
                     "Field '" + finit.name + "' expects '" + fi->type +
@@ -930,6 +935,10 @@ namespace flux {
 
         for (const auto& field : it->second.fields) {
             if (field.name == node.field) {
+                if (!field.is_pub && current_impl_type_ != obj_type) {
+                    diag_.emit(DiagLevel::Error, node.loc,
+                        "Field '" + node.field + "' of '" + obj_type + "' is private");
+                }
                 last_type_ = field.type;
                 return;
             }

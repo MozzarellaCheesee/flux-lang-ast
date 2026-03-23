@@ -158,13 +158,19 @@ namespace flux {
         }
 
         void visit(FieldDecl& node) override {
-            printLine("FieldDecl { name: \"" + node.name + "\" }");
+            printLine(
+                "FieldDecl { is_pub: " + std::string(node.is_pub ? "true" : "false") +
+                ", name: \"" + node.name + "\" }"
+            );
             Indent ind(*this, true);
             if (node.type) node.type->accept(*this);
         }
 
         void visit(StructDecl& node) override {
-            printLine("StructDecl { name: \"" + node.name + "\" }");
+            printLine(
+                "StructDecl { is_pub: " + std::string(node.is_pub ? "true" : "false") +
+                ", name: \"" + node.name + "\" }"
+            );
             {
                 Indent ind(*this, true);
                 printLine("fields:");
@@ -176,15 +182,7 @@ namespace flux {
         }
 
         void visit(ImplDecl& node) override {
-            printLine("ImplDecl");
-            // {
-            //     Indent ind(*this, false);
-            //     printLine("target type:");
-            //     if (node.target_type) {
-            //         Indent ind2(*this, true);
-            //         node.target_type->accept(*this);
-            //     }
-            // }
+            printLine("ImplDecl { target: \"" + node.target + "\" }");
             {
                 Indent ind(*this, true);
                 printLine("methods:");
@@ -196,7 +194,10 @@ namespace flux {
         }
 
         void visit(ClassDecl& node) override {
-            printLine("ClassDecl { name: \"" + node.name + "\" }");
+            printLine(
+                "ClassDecl { is_pub: " + std::string(node.is_pub ? "true" : "false") +
+                ", name: \"" + node.name + "\" }"
+            );
             {
                 Indent ind(*this, false);
                 printLine("fields:");
@@ -248,12 +249,18 @@ namespace flux {
                 }
             }
             {
+                Indent ind(*this, node.else_branch == nullptr);
+                printLine("then:");
+                if (node.then_block) {
+                    Indent ind2(*this, true);
+                    node.then_block->accept(*this);
+                }
+            }
+            if (node.else_branch) {
                 Indent ind(*this, true);
                 printLine("else:");
-                if (node.else_branch) {
-                    Indent ind2(*this, true);
-                    node.else_branch->accept(*this);
-                }
+                Indent ind2(*this, true);
+                node.else_branch->accept(*this);
             }
         }
 
@@ -373,7 +380,11 @@ namespace flux {
         }
 
         void visit(UnaryExpr& node) override {
-            printLine("BinaryExpr { op: \"" + std::to_string(static_cast<int>(node.op)) + "\" }");
+            static const char* op_names[] = {
+                "++x", "--x", "x++", "x--", "-", "!", "~", "*", "&"
+            };
+            const char* op_str = op_names[static_cast<int>(node.op)];
+            printLine(std::string("UnaryExpr { op: \"") + op_str + "\" }");
             Indent ind(*this, true);
             if (node.operand) node.operand->accept(*this);
         }
@@ -424,7 +435,7 @@ namespace flux {
         }
 
         void visit(AssignExpr& node) override {
-            printLine("AssignExpr");
+            printLine("AssignExpr { op: \"" + node.op + "\" }");
             {
                 Indent ind(*this, false);
                 printLine("target:");
@@ -508,17 +519,15 @@ namespace flux {
         }
 
         void visit(StructInitExpr& node) override {
-            printLine("StructInitExpr { name: \"" + node.type_name + "\" }");
+            printLine("StructInitExpr { type: \"" + node.type_name + "\" }");
             Indent ind(*this, true);
-            // предполагаем: vector<pair<string, Expr*>>
             for (size_t i = 0; i < node.fields.size(); ++i) {
-                auto& [fname, fexpr] = node.fields[i];
-                bool is_last = (i + 1 == node.fields.size());
-                Indent ind_f(*this, is_last);
-                printLine("field \"" + fname + "\"");
-                if (fexpr) {
+                auto& finit = node.fields[i];
+                Indent ind_f(*this, i + 1 == node.fields.size());
+                printLine("field \"" + finit.name + "\":");
+                if (finit.value) {
                     Indent ind_e(*this, true);
-                    fexpr->accept(*this);
+                    finit.value->accept(*this);
                 }
             }
         }
