@@ -1,14 +1,18 @@
 {
   "name": "flux-lang",
   "displayName": "Flux Language",
-  "description": "Syntax highlighting for the Flux programming language (.flx)",
-  "version": "0.1.0",
+  "description": "Syntax highlighting and IntelliSense for the Flux programming language (.flx)",
+  "version": "0.2.0",
   "publisher": "flux-lang",
   "engines": {
     "vscode": "^1.75.0"
   },
   "categories": [
     "Programming Languages"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:flux"
   ],
   "contributes": {
     "languages": [
@@ -25,6 +29,16 @@
         "scopeName": "source.flux",
         "path": "./syntaxes/flux.tmLanguage.json"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Flux Language",
+      "properties": {
+        "flux.compilerPath": {
+          "type": "string",
+          "default": "fluxc",
+          "description": "Путь к компилятору fluxc. По умолчанию ищется в PATH."
+        }
+      }
+    }
   }
 }

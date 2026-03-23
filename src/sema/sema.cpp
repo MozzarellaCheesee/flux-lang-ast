@@ -35,23 +35,23 @@ namespace flux {
         return ""; // не найдено
     }
     
-    std::string SemanticAnalyzer::type_node_to_string(TypeNode* t) {
+    std::string SemanticAnalyzer::type_to_str(TypeNode* t) {
         if (!t) return "unknown";
 
         if (auto* pt = dynamic_cast<PrimitiveType*>(t))
             return pt->name;
 
         if (auto* r = dynamic_cast<RefType*>(t))
-            return "&" + type_node_to_string(r->inner.get());
+            return "&" + type_to_str(r->inner.get());
 
         if (auto* a = dynamic_cast<ArrayType*>(t))
-            return type_node_to_string(a->element.get()) + "[]";
+            return type_to_str(a->element.get()) + "[]";
 
         if (auto* g = dynamic_cast<GenericType*>(t)) {
             std::string s = g->name + "<";
             for (size_t i = 0; i < g->args.size(); ++i) {
                 if (i) s += ", ";
-                s += type_node_to_string(g->args[i].get());
+                s += type_to_str(g->args[i].get());
             }
             return s + ">";
         }

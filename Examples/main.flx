@@ -1,3 +1,5 @@
+#import "./add.flx"
+
 struct Point {
     pub x: int32,
     pub y: int32
@@ -35,17 +37,13 @@ class People {
         };
     }
 
-    pub fnc print_name(self) -> () {
+    pub fnc printname(self) -> () {
         println(self.name);
     }
 }
 
 fnc main() -> int32 {
-    let animal = People.new("John", 16);
-    let x: int16 = 1345;
-    println(x);
-
-    let pt = Point.new(3, 6);
-    println(pt.x);
+    let fib = add(6);
+    println(fib);
     return 0;
 }

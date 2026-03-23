@@ -6,6 +6,14 @@
 #include <vector>
 #include <cstdlib>
 
+#ifdef _WIN32
+#  include <process.h>
+#  define FLUX_PID() static_cast<int>(_getpid())
+#else
+#  include <unistd.h>
+#  define FLUX_PID() static_cast<int>(getpid())
+#endif
+
 #include "flux/codegen/codegen.h"
 #include "flux/lexer/lexer.h"
 #include "flux/common/diagnostic.h"
@@ -13,6 +21,7 @@
 #include "flux/parser/parser.h"
 #include "flux/sema/sema.h"
 #include "flux/ast/ast_printer.h"
+#include "flux/complete/complete.h"
 
 static const char* FLUXC_VERSION = "0.1.0";
 
@@ -195,11 +204,72 @@ static std::optional<Options> parse_args(int argc, char** argv) {
     return opts;
 }
 
-// ---------------------------------------------------------------------------
-// Main
-// ---------------------------------------------------------------------------
+// ── JSON-escaping helper ──────────────────────────────────────────────────────
+
+static std::string json_str(const std::string& s) {
+    std::string r;
+    r.reserve(s.size() + 2);
+    r += '"';
+    for (unsigned char c : s) {
+        if      (c == '"')  r += "\\\"";
+        else if (c == '\\') r += "\\\\";
+        else if (c == '\n') r += "\\n";
+        else if (c == '\r') r += "\\r";
+        else if (c == '\t') r += "\\t";
+        else                r += (char)c;
+    }
+    r += '"';
+    return r;
+}
+
+// ── --complete subcommand ─────────────────────────────────────────────────────
+// Usage: fluxc --complete <line> <col> <file>
+// Prints a JSON array of completion items to stdout.
+
+static int run_complete(int argc, char** argv) {
+    if (argc < 5) {
+        std::cerr << "Usage: fluxc --complete <line> <col> <file>\n";
+        return 1;
+    }
+    uint32_t line = (uint32_t)std::stoul(argv[2]);
+    uint32_t col  = (uint32_t)std::stoul(argv[3]);
+    std::filesystem::path fpath = argv[4];
+
+    // Читаем текущее содержимое из stdin (VS Code передаёт буфер редактора).
+    // Если stdin пустой (запуск вручную) — читаем файл с диска.
+    std::string source;
+    if (!std::cin.eof()) {
+        source = {std::istreambuf_iterator<char>(std::cin),
+                  std::istreambuf_iterator<char>()};
+    }
+    if (source.empty()) {
+        source = read_file(fpath);
+        if (source.empty()) return 1;
+    }
+
+    auto items = flux::compute_completions(source, fpath.string(), line, col);
+
+    std::cout << "[\n";
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        std::cout << "  {"
+                  << "\"label\":"  << json_str(items[i].label)  << ","
+                  << "\"kind\":"   << items[i].kind              << ","
+                  << "\"detail\":" << json_str(items[i].detail)
+                  << "}";
+        if (i + 1 < items.size()) std::cout << ",";
+        std::cout << "\n";
+    }
+    std::cout << "]\n";
+    return 0;
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
 
 int main(int argc, char** argv) {
+    // Режим автодополнения: fluxc --complete <line> <col> <file>
+    if (argc >= 2 && std::string_view(argv[1]) == "--complete")
+        return run_complete(argc, argv);
+
     auto opts_opt = parse_args(argc, argv);
     if (!opts_opt) return 1;
     const Options& opts = *opts_opt;
@@ -252,10 +322,17 @@ int main(int argc, char** argv) {
     flux::CodeGen codegen;
     std::string cpp_code = codegen.generate(*program);
 
-    // Place the intermediate .cpp next to the output (or input if no-compile)
-    std::filesystem::path cpp_file = opts.no_compile
-        ? opts.input.parent_path() / (opts.input.stem().string() + ".cpp")
-        : opts.output.parent_path() / (opts.output.stem().string() + ".cpp");
+    // --no-compile: emit .cpp next to the source file (it IS the output)
+    // normal compile: write to the system temp directory to keep source dirs clean
+    std::filesystem::path cpp_file;
+    if (opts.no_compile) {
+        cpp_file = opts.input.parent_path()
+                 / (opts.input.stem().string() + ".cpp");
+    } else {
+        std::string unique_name = opts.input.stem().string()
+                                + "_" + std::to_string(FLUX_PID()) + ".cpp";
+        cpp_file = std::filesystem::temp_directory_path() / unique_name;
+    }
 
     {
         std::ofstream out(cpp_file);
@@ -298,13 +375,28 @@ int main(int argc, char** argv) {
 
     if (rc != 0) {
         std::cerr << "error: C++ compilation failed (exit code " << rc << ")\n";
-        if (!opts.emit_cpp) std::filesystem::remove(cpp_file);
+        std::filesystem::remove(cpp_file);
         return 8;
     }
 
-    // ── 9. Cleanup ────────────────────────────────────────────────────────────
-    if (!opts.emit_cpp)
+    // ── 9. Cleanup / emit ─────────────────────────────────────────────────────
+    if (opts.emit_cpp) {
+        // Move the temp .cpp next to the produced binary
+        std::filesystem::path emit_dest = opts.output.parent_path()
+                                        / (opts.output.stem().string() + ".cpp");
+        std::error_code ec;
+        std::filesystem::rename(cpp_file, emit_dest, ec);
+        if (ec) {
+            // rename across volumes fails; fall back to copy + delete
+            std::filesystem::copy_file(cpp_file, emit_dest,
+                std::filesystem::copy_options::overwrite_existing);
+            std::filesystem::remove(cpp_file);
+        }
+        if (opts.verbose)
+            std::cout << "Emitted C++: " << emit_dest << "\n";
+    } else {
         std::filesystem::remove(cpp_file);
+    }
 
     std::cout << "Built: " << opts.output << "\n";
     return 0;

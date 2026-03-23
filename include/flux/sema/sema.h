@@ -98,6 +98,12 @@ namespace flux {
         void visit(ConstructorPattern&) override {}
         void visit(IdentPattern&)       override {}
 
+        // ── Геттеры для инструментов (completion, LSP) ───
+        const FuncTable& func_table() const { return func_table_; }
+        const std::unordered_map<std::string, TypeInfo>& type_table() const { return type_table_; }
+        // Преобразует TypeNode* в строку (напр. "int32", "&str")
+        static std::string type_to_str(TypeNode* t);
+
     private:
         // ── Проверки точки входа ─────────────────────────
         void check_main_entry_point();
@@ -112,7 +118,7 @@ namespace flux {
         void declare_var(const std::string& name, const std::string& type, const SourceLocation& loc);
         bool is_known_type(const std::string& name) const;
         bool is_builtin(const std::string& name) const;
-        std::string type_node_to_string(TypeNode* t);
+        std::string type_node_to_string(TypeNode* t) { return type_to_str(t); }
         std::string lookup_var(const std::string& name) const;
         static int         numeric_rank(const std::string& type);
         static bool        is_numeric(const std::string& type);
