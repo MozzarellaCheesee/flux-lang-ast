@@ -76,31 +76,31 @@ void eprint(Args&&... args)  { (std::cerr << ... << args); }
 
 // ── io runtime ───────────────────────────────────────────────
 inline std::string read_line() {
-    std::string s;
-    std::getline(std::cin, s);
-    return s;
+    std::string __rs__;
+    std::getline(std::cin, __rs__);
+    return __rs__;
 }
 inline int32_t read_int() {
-    int32_t n = 0; std::cin >> n; std::cin.ignore();
-    return n;
+    int32_t __rn__ = 0; std::cin >> __rn__; std::cin.ignore();
+    return __rn__;
 }
 inline uint32_t read_uint() {
-    uint32_t n = 0; std::cin >> n; std::cin.ignore();
-    return n;
+    uint32_t __rn__ = 0; std::cin >> __rn__; std::cin.ignore();
+    return __rn__;
 }
 inline float read_float() {
-    float n = 0.0f; std::cin >> n; std::cin.ignore();
-    return n;
+    float __rn__ = 0.0f; std::cin >> __rn__; std::cin.ignore();
+    return __rn__;
 }
 inline double read_double() {
-    double n = 0.0; std::cin >> n; std::cin.ignore();
-    return n;
+    double __rn__ = 0.0; std::cin >> __rn__; std::cin.ignore();
+    return __rn__;
 }
 
 // ── math runtime ─────────────────────────────────────────────
 inline double flux_sqrt  (double x)              { return std::sqrt(x); }
 inline double flux_cbrt  (double x)              { return std::cbrt(x); }
-inline double flux_pow   (double b, double e)    { return std::pow(b, e); }
+inline double flux_pow   (double __rb__, double e)    { return std::pow(__rb__, e); }
 inline int32_t abs_i32   (int32_t x)             { return std::abs(x); }
 inline int64_t abs_i64   (int64_t x)             { return std::abs(x); }
 inline double  abs_f64   (double x)              { return std::fabs(x); }
@@ -119,70 +119,77 @@ inline double  flux_asin (double x)              { return std::asin(x); }
 inline double  flux_acos (double x)              { return std::acos(x); }
 inline double  flux_atan (double x)              { return std::atan(x); }
 inline double  flux_atan2(double y, double x)    { return std::atan2(y, x); }
-inline int32_t min_i32(int32_t a, int32_t b)     { return a < b ? a : b; }
-inline int32_t max_i32(int32_t a, int32_t b)     { return a > b ? a : b; }
-inline int64_t min_i64(int64_t a, int64_t b)     { return a < b ? a : b; }
-inline int64_t max_i64(int64_t a, int64_t b)     { return a > b ? a : b; }
-inline double  min_f64(double a, double b)        { return a < b ? a : b; }
-inline double  max_f64(double a, double b)        { return a > b ? a : b; }
+inline int32_t min_i32(int32_t __ra__, int32_t __rb__)     { return __ra__ < __rb__ ? __ra__ : __rb__; }
+inline int32_t max_i32(int32_t __ra__, int32_t __rb__)     { return __ra__ > __rb__ ? __ra__ : __rb__; }
+inline int64_t min_i64(int64_t __ra__, int64_t __rb__)     { return __ra__ < __rb__ ? __ra__ : __rb__; }
+inline int64_t max_i64(int64_t __ra__, int64_t __rb__)     { return __ra__ > __rb__ ? __ra__ : __rb__; }
+inline double  min_f64(double __ra__, double __rb__)        { return __ra__ < __rb__ ? __ra__ : __rb__; }
+inline double  max_f64(double __ra__, double __rb__)        { return __ra__> __rb__ ? __ra__ : __rb__; }
 inline int32_t clamp_i32(int32_t v, int32_t lo, int32_t hi) { return v < lo ? lo : v > hi ? hi : v; }
 inline double  clamp_f64(double v, double lo, double hi)     { return v < lo ? lo : v > hi ? hi : v; }
 
 // ── string runtime ───────────────────────────────────────────
-inline int32_t str_len      (const std::string& s)  { return (int32_t)s.size(); }
-inline bool    str_is_empty (const std::string& s)  { return s.empty(); }
-inline bool    str_contains (const std::string& s, const std::string& sub) {
-    return s.find(sub) != std::string::npos;
+inline int32_t str_len      (const std::string& __rs__)  { return (int32_t)__rs__.size(); }
+inline bool    str_is_empty (const std::string& __rs__)  { return __rs__.empty(); }
+inline bool str_starts_with(const std::string& __rs__, const std::string& __rp__) {
+    return __rs__.size() >= __rp__.size() && __rs__.compare(0, __rp__.size(), __rp__) == 0;
 }
-inline bool str_starts_with(const std::string& s, const std::string& p) {
-    return s.size() >= p.size() && s.compare(0, p.size(), p) == 0;
+inline bool str_ends_with(const std::string& __rs__, const std::string& __rp__) {
+    return __rs__.size() >= __rp__.size() && __rs__.compare(__rs__.size() - __rp__.size(), __rp__.size(), __rp__) == 0;
 }
-inline bool str_ends_with(const std::string& s, const std::string& p) {
-    return s.size() >= p.size() && s.compare(s.size() - p.size(), p.size(), p) == 0;
+inline std::string str_to_upper(std::string __rs__) {
+    std::transform(s.begin(), __rs__.end(), __rs__.begin(), [](unsigned char c){ return std::toupper(c); });
+    return __rs__;
 }
-inline std::string str_to_upper(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::toupper(c); });
-    return s;
+inline bool    str_contains (const std::string& __rs__, const std::string& sub, const bool case_sensitive = true) {
+    std::string temp_s = __rs__;
+    std::string temp_sub = sub;
+    if (!case_sensitive) {
+        temp_s = str_to_upper(temp_s);
+        temp_sub = str_to_upper(temp_sub);
+    }
+    return temp_s.find(temp_sub) != std::string::npos;
 }
-inline std::string str_to_lower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
-    return s;
+
+inline std::string str_to_lower(std::string __rs__) {
+    std::transform(__rs__.begin(), __rs__.end(), __rs__.begin(), [](unsigned char c){ return std::tolower(c); });
+    return __rs__;
 }
-inline std::string str_repeat(const std::string& s, int32_t n) {
-    std::string r; r.reserve(s.size() * (n > 0 ? n : 0));
-    for (int32_t i = 0; i < n; ++i) r += s;
+inline std::string str_repeat(const std::string& __rs__, int32_t __rn__) {
+    std::string r; r.reserve(s.size() * (__rn__ > 0 ? __rn__ : 0));
+    for (int32_t __ri__ = 0; __ri__ < __rn__; ++__ri__) r += __rs__;
     return r;
 }
-inline std::string str_trim_start(std::string s) {
-    auto it = std::find_if(s.begin(), s.end(), [](unsigned char c){ return !std::isspace(c); });
-    s.erase(s.begin(), it);
-    return s;
+inline std::string str_trim_start(std::string __rs__) {
+    auto it = std::find_if(s.begin(), __rs__.end(), [](unsigned char c){ return !std::isspace(c); });
+    __rs__.erase(s.begin(), it);
+    return __rs__;
 }
-inline std::string str_trim_end(std::string s) {
-    auto it = std::find_if(s.rbegin(), s.rend(), [](unsigned char c){ return !std::isspace(c); });
-    s.erase(it.base(), s.end());
-    return s;
+inline std::string str_trim_end(std::string __rs__) {
+    auto it = std::find_if(s.rbegin(), __rs__.rend(), [](unsigned char c){ return !std::isspace(c); });
+    __rs__.erase(it.base(), __rs__.end());
+    return __rs__;
 }
-inline std::string str_trim(std::string s) { return str_trim_end(str_trim_start(std::move(s))); }
-inline std::string str_replace(std::string s, const std::string& from, const std::string& to) {
+inline std::string str_trim(std::string __rs__) { return str_trim_end(str_trim_start(std::move(__rs__))); }
+inline std::string str_replace(std::string __rs__, const std::string& from, const std::string& to) {
     size_t pos = 0;
-    while ((pos = s.find(from, pos)) != std::string::npos) {
-        s.replace(pos, from.size(), to);
+    while ((pos = __rs__.find(from, pos)) != std::string::npos) {
+        __rs__.replace(pos, from.size(), to);
         pos += to.size();
     }
     return s;
 }
-inline std::string str_concat(const std::string& a, const std::string& b) { return a + b; }
-inline int32_t     str_char_at(const std::string& s, int32_t i) {
-    if (i < 0 || (size_t)i >= s.size()) return -1;
-    return (unsigned char)s[i];
+inline std::string str_concat(const std::string& __ra__, const std::string& __rb__) { return __ra__ + __rb__; }
+inline int32_t     str_char_at(const std::string& __rs__, int32_t __ri__) {
+    if (__ri__ < 0 || (size_t)__ri__ >= __rs__.size()) return -1;
+    return (unsigned char)__rs__[__ri__];
 }
-inline std::string to_string_i32 (int32_t n)  { return std::to_string(n); }
-inline std::string to_string_i64 (int64_t n)  { return std::to_string(n); }
-inline std::string to_string_f64 (double n)   { return std::to_string(n); }
-inline std::string to_string_bool(bool b)      { return b ? "true" : "false"; }
-inline int32_t     parse_int  (const std::string& s) { return std::stoi(s); }
-inline double      parse_float(const std::string& s) { return std::stod(s); }
+inline std::string to_string_i32 (int32_t __rn__)  { return std::to_string(__rn__); }
+inline std::string to_string_i64 (int64_t __rn__)  { return std::to_string(__rn__); }
+inline std::string to_string_f64 (double __rn__)   { return std::to_string(__rn__); }
+inline std::string to_string_bool(bool __rb__)      { return __rb__ ? "true" : "false"; }
+inline int32_t     parse_int  (const std::string& __rs__) { return std::stoi(__rs__); }
+inline double      parse_float(const std::string& __rs__) { return std::stod(__rs__); }
 
 // ── using — math из <cmath> без std:: ────────────────────────
 using std::sqrt; using std::cbrt;  using std::pow;

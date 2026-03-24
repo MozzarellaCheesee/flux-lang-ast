@@ -56,7 +56,7 @@ extern fnc str_len(s: string) -> int32;
 extern fnc str_is_empty(s: string) -> bool;
 extern fnc str_to_upper(s: string) -> string;
 extern fnc str_to_lower(s: string) -> string;
-extern fnc str_contains(s: string, sub: string) -> bool;
+extern fnc str_contains(s: string, sub: string, case_sensitive: bool) -> bool;
 extern fnc str_starts_with(s: string, prefix: string) -> bool;
 extern fnc str_ends_with(s: string, suffix: string) -> bool;
 extern fnc str_repeat(s: string, n: int32) -> string;
